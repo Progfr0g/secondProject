@@ -1,0 +1,24 @@
+{
+    "resource": "job",
+    "job_name": "MyGlueJob",
+    "job_description": "Awesome AWS Glue job with python script",
+    "script": "s3://etl-scripts/toCV/fromRelational/fromTable.py",
+    "iam_role_arn": "test-iam-role",
+    "connection": "SPIntegrationConnection",
+    "tags_author": {
+        "author": "Developer",
+        "system": "SystemName"
+    },
+    "max_concurrent_runs": 1,
+    "job_default_arguments": {
+        "source_database": "MyDatabase",
+        "source_table_name": "table_name",
+        "source_increment_fields": [
+            "Id",
+            "CreateDate"
+        ],
+        "source_increment_sort_order": "asc"
+    },
+    "sink_type": "S3",
+    "sink_s3_path": "s3://cold-vault/prod/toCV/"
+}

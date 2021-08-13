@@ -1,0 +1,24 @@
+version: 0.1
+
+resource: job
+name: MyGlueJob
+description: Awesome AWS Glue job with python script
+script: "s3://etl-scripts/toCV/fromRelational/fromTable.py"
+tags:
+  author: Developer
+  system: SystemName
+source:
+  type: Relational
+  connection: SPIntegrationConnection
+  dataCatalog:
+    database: MyDatabase
+    table: table_name
+  incrementFields:
+    - Id
+    - CreateDate
+  incrementSortOrder: asc
+sink:
+  type: S3
+  s3Path: "s3://cold-vault/prod/toCV/"
+jobRunSettings:
+  iamRole: "test-iam-role"
