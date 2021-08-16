@@ -1,13 +1,18 @@
+from abc import abstractmethod, ABC
+from typing import Dict, List
+
 from pydantic import BaseModel, Field, root_validator
-from typing import List
+
 
 class TagsModel(BaseModel):
     author: str
     system: str
 
+
 class DataCatalogModel(BaseModel):
     database: str
     table: str
+
 
 class SourceModel(BaseModel):
     type: str
@@ -16,12 +21,15 @@ class SourceModel(BaseModel):
     incrementFields: List[str]
     incrementSortOrder: str
 
+
 class SinkModel(BaseModel):
     type: str
     s3Path: str
 
+
 class JobRunSettingsModel(BaseModel):
     iamRole: str
+
 
 class YAMLModel(BaseModel):
     version: float
@@ -35,20 +43,25 @@ class YAMLModel(BaseModel):
     sink: SinkModel
     jobRunSettings: JobRunSettingsModel
 
+
 """
 ---------------------------------------
 
 """
-class BaseNestingSupport(BaseModel):
 
-    @root_validator(pre = True)
+class BaseNestingSupport(BaseModel):
+    @classmethod
+    @abstractmethod
+    def from_config_model(cls, config):
+        pass
+
+    @root_validator(pre=True)
     def traverse_sources(cls, values):
         for (name, field) in cls.__fields__.items():
             source_selector = field.field_info.extra.get("source")
             if source_selector is not None:
                 source_path = source_selector.split(".")
-
-                if not len(source_path) > 0:
+                if len(source_path) == 0:
                     raise ValueError(
                         f"{cls.__name__}: Invalid source path: '{source_selector}'"
                     )
@@ -93,21 +106,26 @@ class JSONModel(BaseNestingSupport):
 
     sink_type: str = Field(source="sink.type")
     sink_s3_path: str = Field(source="sink.s3Path")
-
     job_run_settings_iam_role: str = Field(source="jobRunSettings.iamRole")
 
 
-class SourceModelJSON(BaseNestingSupport):
+class SourceModelJSON2(BaseNestingSupport):
     source_database: str = Field(source="dataCatalog.database")
     source_table_name: str = Field(source="dataCatalog.table")
     source_increment_fields: List[str] = Field(source="incrementFields")
     source_increment_sort_order: str = Field(source="incrementSortOrder")
 
-    # sink_type: str = Field(source="sink.type") #TODO: get from external fields??
-    # sink_s3_path: str = Field(source="sink.s3Path")
+    sink_type: str
+    sink_s3_path: str
+
+    @classmethod
+    def from_config_model(cls, config: dict):
+        sink_type = config["sink"]["type"]
+        sink_s3_path = config["sink"]["s3Path"]
+
+
 
 class JSONModel2(BaseNestingSupport):
-
     resource: str
     job_name: str = Field(source="name")
     job_description: str = Field(source="description")
@@ -120,28 +138,9 @@ class JSONModel2(BaseNestingSupport):
 
     max_concurrent_runs: int = 1
 
-    job_default_arguments: SourceModelJSON = Field(source="source")
+    job_default_arguments: SourceModelJSON2
 
+    @classmethod
+    def from_config_model(cls, config: dict):
+        job_default_arguments = SourceModelJSON2.from_config_model(config)
 
-    sink_type: str = Field(source="sink.type")
-    sink_s3_path: str = Field(source="sink.s3Path") 
-
-
-class JSONModel3(BaseNestingSupport):
-
-    resource: str
-    job_name: str = Field(source="name")
-    job_description: str = Field(source="description")
-    script: str
-
-    iam_role_arn: str = Field(source="jobRunSettings.iamRole")
-    connection: str = Field(source="source.connection")
-
-    tags_author: TagsModel = Field(source="tags")
-
-    max_concurrent_runs: int = 1
-
-    job_default_arguments: SourceModelJSON = Field(source="source")
-
-    sink_type: str = Field(source="sink.type")
-    sink_s3_path: str = Field(source="sink.s3Path")
